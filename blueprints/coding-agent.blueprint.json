@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agennext.dev/blueprints/coding-agent.blueprint.json",
+  "blueprintId": "agennext.coding-agent.v1",
+  "name": "Coding Agent",
+  "description": "Blueprint for creating a coding agent that can inspect repositories, propose code changes, request approvals, run checks through a backend runtime, and prepare pull requests.",
+  "type": "schema:SoftwareAgent",
+  "version": "0.1.0",
+  "requiredSetup": [
+    "identity",
+    "profile",
+    "model",
+    "tools",
+    "environment",
+    "managerApproval"
+  ],
+  "profileFields": [
+    { "id": "displayName", "label": "Display name", "type": "string", "required": true },
+    { "id": "role", "label": "Role", "type": "string", "default": "developer" },
+    { "id": "organization", "label": "Organization", "type": "string" },
+    { "id": "codingStyle", "label": "Coding style", "type": "choice", "options": ["fast", "balanced", "safe"], "default": "balanced" }
+  ],
+  "model": {
+    "supportsRouter": true,
+    "defaultProviderMode": "agennext-router",
+    "defaultModel": "agennext-router:auto",
+    "defaultRouterPolicy": "balanced",
+    "supportsLocalModels": true,
+    "localProviderExamples": ["ollama", "lm-studio", "openai-compatible"]
+  },
+  "tools": [
+    { "id": "github", "kind": "github", "required": true, "permissions": ["read", "write"], "requiresApproval": true, "risk": "medium" },
+    { "id": "browser", "kind": "browser", "required": true, "permissions": ["search", "open", "screenshot"], "requiresApproval": false, "risk": "medium" },
+    { "id": "filesystem", "kind": "filesystem", "required": true, "permissions": ["read", "write"], "requiresApproval": true, "risk": "high" },
+    { "id": "terminal", "kind": "terminal", "required": false, "permissions": ["execute"], "requiresApproval": true, "risk": "high" },
+    { "id": "mcp", "kind": "mcp", "required": false, "permissions": ["read", "write", "network"], "requiresApproval": true, "risk": "medium" }
+  ],
+  "managerApproval": {
+    "required": true,
+    "sourcePreference": ["hrms", "manual"],
+    "approvalTriggers": [
+      "file.write",
+      "command.execute",
+      "dependency.install",
+      "branch.push",
+      "pull_request.create",
+      "deployment.request"
+    ]
+  },
+  "runtimeHandoff": {
+    "outputType": "CodifiableAgentSpec",
+    "target": "AGenNext Runtime / Agent Builder"
+  }
+}
