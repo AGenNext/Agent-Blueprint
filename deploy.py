@@ -150,6 +150,53 @@ async def seed_demo_data(db):
         payload: { message: "Schema applied successfully", version: "v1.0.0" },
         occurred_at: time::now()
     };
+
+    -- Demo payment provider (sandbox)
+    CREATE payment_provider:stripe_sandbox CONTENT {
+        provider_name: "Stripe Sandbox",
+        provider_type: "stripe",
+        integration_mode: "sandbox",
+        status: "active",
+        created_at: time::now(),
+        updated_at: time::now()
+    };
+
+    -- Demo payment intent: orchestrator pays worker
+    CREATE payment_intent:demo_pi_01 CONTENT {
+        payer_agent: agent:orchestrator,
+        payee_agent: agent:worker_01,
+        payment_mode: "agent_to_agent",
+        service_type: "research_task",
+        amount: 10.00dec,
+        currency: "INR",
+        status: "requested",
+        idempotency_key: "demo-pi-001-20260522",
+        created_by: agent:orchestrator,
+        metadata: { description: "Payment for demo research task" },
+        created_at: time::now(),
+        updated_at: time::now()
+    };
+
+    -- Demo ledger entry (AP/AR)
+    CREATE payment_ledger:demo_ledger_01 CONTENT {
+        payment_intent_id: payment_intent:demo_pi_01,
+        payer: agent:orchestrator,
+        receiver: agent:worker_01,
+        amount: 10.00dec,
+        currency: "INR",
+        payable_status: "payable_open",
+        receivable_status: "receivable_open",
+        delivery_status: "service_not_started",
+        settlement_status: "not_started",
+        reconciliation_status: "not_started",
+        created_at: time::now(),
+        updated_at: time::now()
+    };
+
+    -- Payment graph edges
+    RELATE agent:orchestrator -> initiates_payment -> payment_intent:demo_pi_01
+        CONTENT { initiated_at: time::now() };
+    RELATE agent:worker_01 -> receives_payment -> payment_intent:demo_pi_01;
     """
     try:
         result = await db.query(seed_surql)
@@ -167,15 +214,19 @@ async def verify(db):
     print("\n🔍 Verification queries...")
 
     checks = {
-        "Agents":           "SELECT count() AS n FROM agent GROUP ALL",
-        "Actions":          "SELECT count() AS n FROM action GROUP ALL",
-        "Events":           "SELECT count() AS n FROM event GROUP ALL",
-        "Skills":           "SELECT count() AS n FROM skill GROUP ALL",
-        "Messages":         "SELECT count() AS n FROM message GROUP ALL",
-        "Policy Decisions": "SELECT count() AS n FROM policy_decision GROUP ALL",
-        "Graph: delegates": "SELECT count() AS n FROM delegates_to GROUP ALL",
-        "Graph: has_skill":  "SELECT count() AS n FROM has_skill GROUP ALL",
-        "Graph: trusts":    "SELECT count() AS n FROM trusts GROUP ALL",
+        "Agents":             "SELECT count() AS n FROM agent GROUP ALL",
+        "Actions":            "SELECT count() AS n FROM action GROUP ALL",
+        "Events":             "SELECT count() AS n FROM event GROUP ALL",
+        "Skills":             "SELECT count() AS n FROM skill GROUP ALL",
+        "Messages":           "SELECT count() AS n FROM message GROUP ALL",
+        "Policy Decisions":   "SELECT count() AS n FROM policy_decision GROUP ALL",
+        "Payment Intents":    "SELECT count() AS n FROM payment_intent GROUP ALL",
+        "Payment Ledger":     "SELECT count() AS n FROM payment_ledger GROUP ALL",
+        "Payment Providers":  "SELECT count() AS n FROM payment_provider GROUP ALL",
+        "Graph: delegates":   "SELECT count() AS n FROM delegates_to GROUP ALL",
+        "Graph: has_skill":   "SELECT count() AS n FROM has_skill GROUP ALL",
+        "Graph: trusts":      "SELECT count() AS n FROM trusts GROUP ALL",
+        "Graph: pay/receive": "SELECT count() AS n FROM initiates_payment GROUP ALL",
     }
 
     all_ok = True
