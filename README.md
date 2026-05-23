@@ -19,6 +19,13 @@ time+place as first-class primitives, A2A messaging, OPA policy integration, DID
 | `06_skill.surql` | `skill` | `schema:HowTo`, `schema:SoftwareApplication` |
 | `07_edges.surql` | `delegates_to`, `has_skill`, `performs`, `triggers`, `trusts` | Graph relations |
 
+## Blueprints
+
+| File | Purpose |
+|------|---------|
+| `blueprints/coding-agent.blueprint.json` | Coding agent setup, tools, approval gates, and runtime handoff |
+| `blueprints/sample-agents.blueprint.json` | Sample agent profiles with OCI slim packaging, Zot registry flow, Podman local run path, and K3s cluster promotion |
+
 ## Deploy to SurrealDB Cloud (from VPS)
 
 ```bash

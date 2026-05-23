@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agennext.dev/blueprints/sample-agents.blueprint.json",
+  "blueprintId": "agennext.sample-agents.v1",
+  "name": "Sample Agent Profiles",
+  "description": "Reusable sample agent profiles for AGenNext agent marketplace, OCI packaging, Zot registry publishing, and Podman or K3s runtime promotion.",
+  "type": "schema:SoftwareAgent",
+  "version": "0.1.0",
+  "packaging": {
+    "standard": "OCI",
+    "imageProfile": "slim",
+    "registry": {
+      "kind": "zot",
+      "endpoint": "localhost:5000"
+    },
+    "runtimes": ["podman", "k3s"]
+  },
+  "agents": [
+    {
+      "id": "fact-checker",
+      "name": "Fact Checker Crew",
+      "role": "Verifies claims across web sources and returns an evidence-backed confidence score.",
+      "framework": "A2A / ADK",
+      "mode": "Multi-Agent",
+      "models": ["OpenAI", "Gemma local"],
+      "tools": ["DuckDuckGo", "Source review", "Citation brief"],
+      "summary": "A research, critique, and verdict workflow for validating market claims, policy statements, or research notes before publication.",
+      "outcomes": ["Claim decomposition", "Contradiction scan", "Evidence summary"],
+      "ociServices": ["agent-api", "research-worker", "duckduckgo-mcp", "model-runner"]
+    },
+    {
+      "id": "github-issue-summarizer",
+      "name": "GitHub Issue Summarizer",
+      "role": "Reads repository issues and turns noisy threads into triage-ready engineering briefs.",
+      "framework": "Agno",
+      "mode": "Multi-Agent",
+      "models": ["Qwen local"],
+      "tools": ["GitHub MCP", "Issue classifier", "Release notes"],
+      "summary": "A maintainer assistant that groups issue themes, extracts reproduction details, and recommends next actions for product and engineering teams.",
+      "outcomes": ["Issue clusters", "Priority labels", "Maintainer handoff"],
+      "ociServices": ["agent-api", "github-mcp", "triage-worker", "model-runner"]
+    },
+    {
+      "id": "marketing-strategy",
+      "name": "Marketing Strategy Agent",
+      "role": "Builds campaign positioning, audience angles, and launch content plans from a product brief.",
+      "framework": "CrewAI",
+      "mode": "Multi-Agent",
+      "models": ["Qwen local"],
+      "tools": ["Search MCP", "Persona planner", "Content calendar"],
+      "summary": "A strategy crew for early go-to-market work: researcher, strategist, copy lead, and reviewer coordinated into one repeatable run.",
+      "outcomes": ["Audience map", "Messaging pillars", "Channel plan"],
+      "ociServices": ["agent-api", "crew-worker", "search-mcp", "content-store"]
+    },
+    {
+      "id": "sql-data-agent",
+      "name": "SQL Data Agent",
+      "role": "Answers operational questions by inspecting schema, generating SQL, and explaining results.",
+      "framework": "LangGraph",
+      "mode": "Single Agent",
+      "models": ["Qwen local"],
+      "tools": ["Postgres", "Query validator", "Result explainer"],
+      "summary": "A stateful data agent for internal analytics where query planning, execution, and explanation need clear checkpoints.",
+      "outcomes": ["Schema-aware query", "Validated SQL", "Plain-language insight"],
+      "ociServices": ["agent-api", "langgraph-worker", "postgres", "model-runner"]
+    },
+    {
+      "id": "travel-planner",
+      "name": "Travel Planner Team",
+      "role": "Coordinates destination research, weather, maps, lodging, and itinerary tradeoffs.",
+      "framework": "Embabel",
+      "mode": "Multi-Agent",
+      "models": ["Qwen local", "Claude remote", "Llama local"],
+      "tools": ["Weather", "Google Maps", "Airbnb", "Wikipedia"],
+      "summary": "A multi-tool planning team for comparing routes, constraints, activities, and stay options across a trip brief.",
+      "outcomes": ["Daily itinerary", "Budget notes", "Local constraints"],
+      "ociServices": ["agent-api", "planner-worker", "maps-mcp", "weather-mcp"]
+    },
+    {
+      "id": "local-remote-collaborator",
+      "name": "Local Remote Collaborator",
+      "role": "Splits work between private local models and stronger remote models for cost-aware execution.",
+      "framework": "MinionS",
+      "mode": "Local-Remote Protocol",
+      "models": ["Qwen local", "GPT-4o remote"],
+      "tools": ["Task router", "Local context", "Remote reviewer"],
+      "summary": "A collaboration pattern for sensitive or long-context work where cheap local processing and remote reasoning are orchestrated together.",
+      "outcomes": ["Local draft", "Remote critique", "Cost-aware final"],
+      "ociServices": ["agent-api", "local-worker", "remote-reviewer", "model-runner"]
+    }
+  ],
+  "runtimeArtifacts": {
+    "ociStack": "services:\n  zot-registry:\n    image: ghcr.io/project-zot/zot-linux-amd64:latest\n    ports:\n      - \"5000:5000\"\n    volumes:\n      - zot-data:/var/lib/registry\n\n  agent-api:\n    image: localhost:5000/agennext/sample-agent-api:slim\n    ports:\n      - \"8080:8080\"\n    environment:\n      AGENT_PROFILE: fact-checker\n      MODEL_PROVIDER: oci-model-runner\n      MCP_GATEWAY_URL: http://mcp-gateway:9000\n\n  model-runner:\n    image: localhost:5000/agennext/model-runner:slim\n    volumes:\n      - model-cache:/models\n\n  mcp-gateway:\n    image: localhost:5000/agennext/mcp-gateway:slim\n    environment:\n      ENABLED_TOOLS: duckduckgo,github,postgres,weather\n\n  worker:\n    image: localhost:5000/agennext/sample-agent-worker:slim\n    depends_on:\n      - agent-api\n      - model-runner\n      - mcp-gateway\n\nvolumes:\n  zot-data:\n  model-cache:",
+    "podmanCommands": "podman network create agennext-agents\npodman run -d --name zot-registry --network agennext-agents -p 5000:5000 \\\n  -v zot-data:/var/lib/registry ghcr.io/project-zot/zot-linux-amd64:latest\npodman pull ghcr.io/agennext/sample-agent-api:slim\npodman tag ghcr.io/agennext/sample-agent-api:slim localhost:5000/agennext/sample-agent-api:slim\npodman push localhost:5000/agennext/sample-agent-api:slim\npodman kube play oci-stack.yaml",
+    "k3sCommands": "k3s kubectl create namespace agennext-agents\nk3s kubectl apply -n agennext-agents -f zot-registry.yaml\npodman pull ghcr.io/agennext/sample-agent-api:slim\npodman tag ghcr.io/agennext/sample-agent-api:slim localhost:5000/agennext/sample-agent-api:slim\npodman push localhost:5000/agennext/sample-agent-api:slim\nk3s kubectl apply -n agennext-agents -f agent-stack.yaml\nk3s kubectl rollout status deployment/agent-api -n agennext-agents"
+  }
+}
